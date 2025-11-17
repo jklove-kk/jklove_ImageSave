@@ -32,3 +32,8 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.liujie.pictureBackend.controller
+
+# 雪花算法配置
+snowflake:
+  data-center-id: 1
+  machine-id: 1
