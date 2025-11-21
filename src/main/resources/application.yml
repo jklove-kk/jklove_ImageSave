@@ -11,6 +11,19 @@ spring:
     url: jdbc:mysql://192.168.214.129:3306/picture_backend
     username: root
     password: root
+  redis:
+    host: 192.168.214.129
+    port: 6379
+    password: root  # 如果没有密码可以省略
+    database: 0
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+    timeout: 2000ms
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -39,4 +52,5 @@ snowflake:
   data-center-id: 1
   machine-id: 1
 
+#redis配置
 
