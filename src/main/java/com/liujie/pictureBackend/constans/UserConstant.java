@@ -23,4 +23,11 @@ public interface UserConstant {
     String ADMIN_ROLE = "admin";
 
     // endregion
+
+
+    //用户保存登录信息的token前缀
+    String TOKEN_WEB_COOKIE = "token:web:cookie:";
+
+    //用户登录cookie过期时间换算（一天对应的秒数）
+    int TIME_SECONDS_DAY=24*60*60;
 }
