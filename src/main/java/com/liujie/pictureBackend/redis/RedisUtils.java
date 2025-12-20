@@ -76,7 +76,7 @@ public class RedisUtils<V> {
             }
             return true;
         } catch (Exception e) {
-            logger.error("设置redisKey:{},value:{}失败", key, value);
+            logger.error("设置redisKey:{},value:{}失败"+"原因："+e.toString(), key, value);
             return false;
         }
     }
