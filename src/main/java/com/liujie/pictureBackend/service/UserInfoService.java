@@ -5,6 +5,7 @@ import com.liujie.pictureBackend.entity.UserInfo;
 import com.liujie.pictureBackend.model.vo.LoginUserVO;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
 * @author Administrator
@@ -33,7 +34,7 @@ public interface UserInfoService extends IService<UserInfo> {
      * @param request
      * @return 脱敏后的用户信息
      */
-    LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
+    LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request, HttpServletResponse response);
 
 
     /**
@@ -49,7 +50,7 @@ public interface UserInfoService extends IService<UserInfo> {
      * @param request
      * @return
      */
-    UserInfo getLoginUser(HttpServletRequest request);
+    LoginUserVO getLoginUser(HttpServletRequest request);
 
 
 }

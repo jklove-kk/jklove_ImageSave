@@ -3,8 +3,8 @@ package com.liujie.pictureBackend.interceptor;
 
 import com.liujie.pictureBackend.model.vo.LoginUserVO;
 import com.liujie.pictureBackend.redis.RedisService;
-import jdk.internal.org.jline.utils.Log;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletResponse;
  * 自定义拦截器 - 通用拦截器
  */
 @Slf4j
+@Component
 public class GeneralInterceptor implements HandlerInterceptor {
 
     /**
@@ -42,10 +43,12 @@ public class GeneralInterceptor implements HandlerInterceptor {
         if(tokenInfo==null)
         {
             //登录认证失效
+            log.info("未获取到登录信息");
             return false;
         }else {
-            //刷新登录时间
-
+            //刷新登录时间和cookie时间
+            redisService.updateToken2Cookie(response,request);
+            redisService.updateToken(tokenInfo);
         }
 
         return true; // 返回true表示放行请求

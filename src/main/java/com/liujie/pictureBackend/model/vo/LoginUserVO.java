@@ -1,5 +1,6 @@
 package com.liujie.pictureBackend.model.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -9,6 +10,7 @@ import java.util.Date;
  * 登录用户的返回类
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class LoginUserVO implements Serializable {
 
     /**
@@ -52,5 +54,9 @@ public class LoginUserVO implements Serializable {
     private Date updateTime;
 
     private static final long serialVersionUID = 1L;
+
+    //redis中过期截止时间
+    private Long expireAt;
+    private String token;
 }
 

@@ -1,5 +1,6 @@
 package com.liujie.pictureBackend.redis;
 
+import cn.hutool.core.lang.UUID;
 import com.liujie.pictureBackend.constans.UserConstant;
 import com.liujie.pictureBackend.model.vo.LoginUserVO;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -67,7 +68,20 @@ public class RedisService<V> {
     public void saveToken2Cookie(HttpServletResponse response, String token) {
         Cookie cookie = new Cookie(UserConstant.TOKEN_WEB_COOKIE, token);
         //-1会话级别 单位秒
-        cookie.setMaxAge(UserConstant.TIME_SECONDS_DAY * 7);
+        cookie.setMaxAge(UserConstant.TIME_SECONDS_DAY*7);
+        cookie.setPath("/");
+        response.addCookie(cookie);
+    }
+
+    /**
+     * 保存cookie
+     * @param response
+     */
+    public void updateToken2Cookie(HttpServletResponse response,HttpServletRequest request) {
+        String token = getTokenFromCookie(request);
+        Cookie cookie = new Cookie(UserConstant.TOKEN_WEB_COOKIE, token);
+        //-1会话级别 单位秒
+        cookie.setMaxAge(UserConstant.TIME_SECONDS_DAY*7);
         cookie.setPath("/");
         response.addCookie(cookie);
     }
@@ -82,7 +96,7 @@ public class RedisService<V> {
         if (token == null) {
             return null;
         }
-        return (LoginUserVO) getObject(UserConstant.TOKEN_WEB_COOKIE+token);
+        return (LoginUserVO) getObject(UserConstant.TOKEN_REDIS_KEY+token);
     }
 
     /**
@@ -101,6 +115,17 @@ public class RedisService<V> {
             }
         }
         return null;
+    }
+
+    /**
+     * 更新redis中的token
+     * @param loginUserVO
+     */
+    public void updateToken(LoginUserVO loginUserVO) {
+        if(loginUserVO.getToken() == null || loginUserVO.getToken().isEmpty()){
+            return;
+        }
+        redisUtils.setex(UserConstant.TOKEN_REDIS_KEY + loginUserVO.getToken(), loginUserVO, UserConstant.TIME_MILLIS_SECONDS_DAY_7);
     }
 
 
@@ -125,9 +150,25 @@ public class RedisService<V> {
             }
         }
     }
+    //删除对应的token
+    public void cleanToken(String token) {
+        redisUtils.delete(UserConstant.TOKEN_REDIS_KEY+ token);
+    }
+    public void saveTokenInfo(LoginUserVO loginUserVO)
+    {
+        //保存token
+        //自生成Token
+        String token= UUID.randomUUID().toString();
+        if(loginUserVO.getExpireAt()==null)
+        {
+            loginUserVO.setExpireAt(UserConstant.TIME_MILLIS_SECONDS_DAY_7);
+        }
+        if(loginUserVO.getToken()==null||loginUserVO.getToken().isEmpty())
+        {
+            loginUserVO.setToken(token);
 
-    private void cleanToken(String value) {
-        redisUtils.delete(UserConstant.TOKEN_WEB_COOKIE+value);
+        }
+        redisUtils.setex(UserConstant.TOKEN_REDIS_KEY+loginUserVO.getToken(),loginUserVO,loginUserVO.getExpireAt());
     }
 
 

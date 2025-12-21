@@ -26,11 +26,15 @@ public interface UserConstant {
 
 
     //用户保存登录信息的cookie名称前缀
-    String TOKEN_WEB_COOKIE = "token:web:cookie:";
+    String TOKEN_WEB_COOKIE = "token_web_cookie";
 
     //用户redis保存登录信息key名称前缀
-    String TOKEN_REDIS_KEY="token:redis:key";
+    String TOKEN_REDIS_KEY="token:redis:key:";
 
     //用户登录cookie过期时间换算（一天对应的秒数）
     int TIME_SECONDS_DAY=24*60*60;
+
+
+    //用户登录cookie过期时间换算（一天对应的秒数）
+    Long TIME_MILLIS_SECONDS_DAY_7=TIME_SECONDS_DAY*1000*7L;
 }

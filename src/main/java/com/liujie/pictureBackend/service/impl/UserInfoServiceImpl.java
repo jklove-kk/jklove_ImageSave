@@ -11,14 +11,19 @@ import com.liujie.pictureBackend.exception.ErrorCode;
 import com.liujie.pictureBackend.mapper.UserInfoMapper;
 import com.liujie.pictureBackend.model.enums.UserRoleEnum;
 import com.liujie.pictureBackend.model.vo.LoginUserVO;
+import com.liujie.pictureBackend.redis.RedisService;
 import com.liujie.pictureBackend.service.UserInfoService;
 import com.liujie.pictureBackend.utils.common.passWordUtils;
 import com.liujie.pictureBackend.utils.common.uuidUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * @author Administrator
@@ -28,6 +33,8 @@ import java.util.Date;
 @Service
 public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> implements UserInfoService {
 
+    @Resource
+    private RedisService redisService;
 
     /**
      * 用户注册
@@ -86,7 +93,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
      * @return
      */
     @Override
-    public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
+    public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request, HttpServletResponse response) {
         //1.验证账号和密码
         if(StrUtil.isEmpty(userAccount)||StrUtil.isEmpty(userPassword)){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户名或密码为空");
@@ -95,16 +102,40 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
         String encryptPassword = passWordUtils.getEncryptPassword(userPassword);
 
         QueryWrapper<UserInfo> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("userAccount",userAccount);
-        queryWrapper.eq("userPassword",encryptPassword);
+        queryWrapper.eq("user_account",userAccount);
+        queryWrapper.eq("user_password",encryptPassword);
         UserInfo userInfo = this.baseMapper.selectOne(queryWrapper);
         if(userInfo==null){
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR,"账号不存在或密码错误");
         }
 
+        //清除原来的缓存信息
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null&&cookies.length>0) {
+            String token = null;
+            for (Cookie cookie : cookies) {
+                if (UserConstant.TOKEN_WEB_COOKIE.equals(cookie.getName())) {
+                    token = cookie.getValue();
+                }
+            }
+            if (!StrUtil.isEmpty(token)) {
+                redisService.cleanToken(token);
+            }
+        }
+
+
+
         //2.记录登录状态
-        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE,userInfo);
-        return getLoginUserVO(userInfo);
+        //request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE,userInfo);
+        //记录cookie和缓存
+        String token= UUID.randomUUID().toString();
+        redisService.saveToken2Cookie(response,token);
+        //存入缓存
+        LoginUserVO loginUserVO = getLoginUserVO(userInfo);
+        loginUserVO.setToken(token);
+        loginUserVO.setExpireAt(UserConstant.TIME_MILLIS_SECONDS_DAY_7);
+        redisService.saveTokenInfo(loginUserVO);
+        return loginUserVO;
 
 
 
@@ -122,20 +153,10 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
 
     @Override
-    public UserInfo getLoginUser(HttpServletRequest request) {
+    public LoginUserVO getLoginUser(HttpServletRequest request) {
         // 先判断是否已登录
-        Object userObj = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
-        UserInfo currentUser = (UserInfo) userObj;
-        if (currentUser == null || currentUser.getUserNo() == null) {
-            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR,"未登录");
-        }
-        // 从数据库查询（追求性能的话可以注释，直接返回上述结果）
-        String userNo = currentUser.getUserNo();
-        currentUser = this.getById(userNo);
-        if (currentUser == null) {
-            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR,"未登录");
-        }
-        return currentUser;
+        LoginUserVO tokenInfo = redisService.getTokenInfoFromCookie();
+        return tokenInfo;
     }
 
 }

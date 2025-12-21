@@ -2,7 +2,6 @@ package com.liujie.pictureBackend.controller;
 
 import com.liujie.pictureBackend.common.BaseResponse;
 import com.liujie.pictureBackend.common.ResultUtils;
-import com.liujie.pictureBackend.entity.UserInfo;
 import com.liujie.pictureBackend.exception.ErrorCode;
 import com.liujie.pictureBackend.exception.ThrowUtils;
 import com.liujie.pictureBackend.model.dto.user.UserLoginRequest;
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/userInfo")
@@ -37,19 +37,18 @@ public class UserInfoController {
 
 
     @PostMapping("/login")
-    public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request, HttpServletResponse response) {
         ThrowUtils.throwIf(userLoginRequest == null, ErrorCode.PARAMS_ERROR);
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
-        LoginUserVO loginUserVO = userInfoService.userLogin(userAccount, userPassword, request);
+        LoginUserVO loginUserVO = userInfoService.userLogin(userAccount, userPassword, request,response);
         return ResultUtils.success(loginUserVO);
     }
 
 
     @GetMapping("/get/login")
     public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
-        UserInfo user = userInfoService.getLoginUser(request);
-        return ResultUtils.success(userInfoService.getLoginUserVO(user));
+        return ResultUtils.success(userInfoService.getLoginUser(request));
     }
 
 
