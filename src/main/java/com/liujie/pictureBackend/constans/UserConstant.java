@@ -37,4 +37,9 @@ public interface UserConstant {
 
     //用户登录cookie过期时间换算（一天对应的秒数）
     Long TIME_MILLIS_SECONDS_DAY_7=TIME_SECONDS_DAY*1000*7L;
+
+
+    //登录默认密码
+    String DEFAULT_PASSWORD="123456";
+
 }

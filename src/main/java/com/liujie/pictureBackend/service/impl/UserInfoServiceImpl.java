@@ -1,16 +1,23 @@
 package com.liujie.pictureBackend.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.liujie.pictureBackend.common.SnowFlake;
+import com.liujie.pictureBackend.common.DeleteRequest;
 import com.liujie.pictureBackend.constans.UserConstant;
 import com.liujie.pictureBackend.entity.UserInfo;
 import com.liujie.pictureBackend.exception.BusinessException;
 import com.liujie.pictureBackend.exception.ErrorCode;
+import com.liujie.pictureBackend.exception.ThrowUtils;
 import com.liujie.pictureBackend.mapper.UserInfoMapper;
+import com.liujie.pictureBackend.model.dto.user.UserAddRequest;
+import com.liujie.pictureBackend.model.dto.user.UserQueryRequest;
+import com.liujie.pictureBackend.model.dto.user.UserUpdateRequest;
 import com.liujie.pictureBackend.model.enums.UserRoleEnum;
 import com.liujie.pictureBackend.model.vo.LoginUserVO;
+import com.liujie.pictureBackend.model.vo.UserVo;
 import com.liujie.pictureBackend.redis.RedisService;
 import com.liujie.pictureBackend.service.UserInfoService;
 import com.liujie.pictureBackend.utils.common.passWordUtils;
@@ -22,8 +29,11 @@ import javax.annotation.Resource;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * @author Administrator
@@ -71,7 +81,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
         //密码加密
         String encryptPassword= passWordUtils.getEncryptPassword(userPassword);
         UserInfo userInfo = new UserInfo();
-        userInfo.setUserNo(String.valueOf(new SnowFlake().nextId()));
+        userInfo.setUserNo(passWordUtils.getSnowflakeId());
         userInfo.setUserAccount(userAccount);
         userInfo.setUserPassword(encryptPassword);
         userInfo.setCreateTime(new Date());
@@ -122,11 +132,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
                 redisService.cleanToken(token);
             }
         }
-
-
-
         //2.记录登录状态
-        //request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE,userInfo);
         //记录cookie和缓存
         String token= UUID.randomUUID().toString();
         redisService.saveToken2Cookie(response,token);
@@ -158,6 +164,119 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
         LoginUserVO tokenInfo = redisService.getTokenInfoFromCookie();
         return tokenInfo;
     }
+
+    @Override
+    public String addUser(UserAddRequest userAddRequest) {
+        ThrowUtils.throwIf(userAddRequest==null,ErrorCode.PARAMS_ERROR);
+        UserInfo userInfo = new UserInfo();
+        BeanUtils.copyProperties(userAddRequest,userInfo);
+        //管理员创建给于默认密码
+        String enPassword = passWordUtils.getEncryptPassword(UserConstant.DEFAULT_PASSWORD);
+        userInfo.setUserPassword(enPassword);
+        userInfo.setCreateTime(new Date());
+        userInfo.setUserNo(passWordUtils.getSnowflakeId());
+        boolean save = this.save(userInfo);
+        ThrowUtils.throwIf(!save,ErrorCode.OPERATION_ERROR);
+        return userInfo.getUserNo();
+    }
+
+    @Override
+    public Integer deleteUser(DeleteRequest deleteRequest) {
+        ThrowUtils.throwIf(deleteRequest==null,ErrorCode.PARAMS_ERROR);
+        boolean b = this.removeById(deleteRequest.getId());
+        return  b?1:0;
+    }
+
+    @Override
+    public String updateUser(UserUpdateRequest userUpdateRequest) {
+        ThrowUtils.throwIf(userUpdateRequest==null,ErrorCode.PARAMS_ERROR);
+        UserInfo userInfo = new UserInfo();
+        BeanUtils.copyProperties(userUpdateRequest,userInfo);
+        userInfo.setUpdateTime(new Date());
+        boolean b = this.updateById(userInfo);
+        ThrowUtils.throwIf(!b,ErrorCode.OPERATION_ERROR);
+        return userInfo.getUserNo();
+    }
+
+    @Override
+    public Page<UserVo> getUserList(UserQueryRequest userQueryRequest) {
+        ThrowUtils.throwIf(userQueryRequest==null,ErrorCode.PARAMS_ERROR);
+        int pageSize = userQueryRequest.getPageSize();
+        int page = userQueryRequest.getPage();
+        Page<UserInfo> userInfoPage = this.page(new Page<>(page, pageSize), this.getQueryWrapperByUser(userQueryRequest));
+        Page<UserVo> userVoPage = new Page<>(page,pageSize,userInfoPage.getRecords().size());
+        userVoPage.setRecords(this.getUserVoList(userInfoPage.getRecords()));
+        return userVoPage;
+
+    }
+
+    @Override
+    public UserInfo getUser(String userNo) {
+        ThrowUtils.throwIf(StrUtil.isEmpty(userNo),ErrorCode.PARAMS_ERROR);
+        UserInfo user = this.getById(userNo);
+        ThrowUtils.throwIf(user==null,ErrorCode.PARAMS_ERROR);
+        return user;
+    }
+
+    @Override
+    public UserVo getUserVoById(String userNo) {
+        UserInfo user = this.getUser(userNo);
+        return this.getUserVo(user);
+
+    }
+
+
+    public QueryWrapper<UserInfo> getQueryWrapperByUser(UserQueryRequest userQueryRequest) {
+        if (userQueryRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        }
+        String userNo = userQueryRequest.getUserNo();
+        String userAccount = userQueryRequest.getUserAccount();
+        String userName = userQueryRequest.getUserName();
+        String userProfile = userQueryRequest.getUserProfile();
+        String userRole = userQueryRequest.getUserRole();
+        String sortField = userQueryRequest.getSortField();
+        String sortOrder = userQueryRequest.getSortOrder();
+        QueryWrapper<UserInfo> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq(StrUtil.isNotBlank(userNo), "user_no", userNo);
+        queryWrapper.eq(StrUtil.isNotBlank(userRole), "user_role", userRole);
+        queryWrapper.like(StrUtil.isNotBlank(userAccount), "user_account", userAccount);
+        queryWrapper.like(StrUtil.isNotBlank(userName), "user_name", userName);
+        queryWrapper.like(StrUtil.isNotBlank(userProfile), "user_profile", userProfile);
+        queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
+        return queryWrapper;
+    }
+
+
+    /**
+     * 脱敏用户信息
+     * @param user
+     * @return
+     */
+    public UserVo getUserVo(UserInfo user) {
+        if (user == null) {
+            return null;
+        }
+        UserVo userVo = new UserVo();
+        BeanUtils.copyProperties(user, userVo);
+        return userVo;
+    }
+
+
+    /**
+     * 脱敏用户列表
+     * @param userList
+     * @return
+     */
+    public List<UserVo> getUserVoList(List<UserInfo> userList) {
+        if (CollUtil.isEmpty(userList)) {
+            return new ArrayList<>();
+        }
+        return userList.stream().map(this::getUserVo).collect(Collectors.toList());
+    }
+
+
+
 
 }
 
