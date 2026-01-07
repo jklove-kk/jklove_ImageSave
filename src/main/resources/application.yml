@@ -11,6 +11,7 @@ spring:
     url: jdbc:mysql://192.168.214.129:3306/picture_backend
     username: root
     password: root
+  # redis配置
   redis:
     host: 192.168.214.129
     port: 6379
@@ -52,5 +53,5 @@ snowflake:
   data-center-id: 1
   machine-id: 1
 
-#redis配置
+
 
