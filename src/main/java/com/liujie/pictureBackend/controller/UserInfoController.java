@@ -100,7 +100,7 @@ public class UserInfoController {
      * 获取全部用户列表
      * @return
      */
-    @GetMapping("/getUserList")
+    @PostMapping("/getUserList")
     @AuthCheck(mustRole = UserRoleEnum.ADMIN)
     public BaseResponse<Page<UserVo>> getUserList(@RequestBody UserQueryRequest userQueryRequest) {
         return ResultUtils.success(userInfoService.getUserList(userQueryRequest));
